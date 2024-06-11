@@ -3,15 +3,22 @@
     <div class="yuki-count-down">{{ mainText }}</div>
     <div class="yuki-count-down">{{ getHolidayInfo() }}</div>
 
-    <a-button type="primary" class="db mt10" @click="showDiv = !showDiv"
-      >点击显示/隐藏</a-button
-    >
+    <a-button
+      type="primary"
+      class="db mt10"
+      @click="showDiv = !showDiv"
+    >点击显示/隐藏</a-button>
     <div v-show="showDiv">
       <div v-for="index in 2">
         <h1>请编辑你的{{ dataMap[index].title }}</h1>
-        <a-button type="primary" @click="addItem(dataMap[index].list)"
-          >新增</a-button
-        >
+        <a-button
+          type="primary"
+          @click="addItem(dataMap[index].list)"
+        >新增</a-button>
+        <a-button
+          v-if="index === 2"
+          @click="computedOtherWorkDay"
+        >添加当年每月第一个周六</a-button>
         <a-table
           class="mt20"
           :dataSource="dataMap[index].list"
@@ -25,14 +32,12 @@
                 type="text"
                 primary
                 @Click="saveRow(record)"
-                >保存</a-button
-              >
+              >保存</a-button>
               <a-button
                 type="text"
                 danger
                 @Click="deleteRow(dataMap[index].list, record)"
-                >删除</a-button
-              >
+              >删除</a-button>
             </template>
             <template v-if="column.dataIndex === 'date' && isEdit">
               <div>
@@ -56,13 +61,17 @@
       </div>
       <div class="yuki-get-off-time">
         <h1>请编辑你的下班时间</h1>
-        <a-time-picker :value="getOffTime" value-format="HH:mm:ss" />
+        <a-time-picker
+          :value="getOffTime"
+          value-format="HH:mm:ss"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+
 import {
   Button as aButton,
   Table as aTable,
@@ -74,8 +83,9 @@ import {
 // components: { aButton, aTable, aDatePicker, aInput, aTimePicker },
 // components: { aButton, aTable, aDatePicker, aInput, aTimePicker },
 import type { Ref } from 'vue';
-import { onMounted, reactive, ref } from 'vue';
-
+import { onMounted, reactive, ref, getCurrentInstance } from 'vue';
+const { proxy } = getCurrentInstance() as any;
+const dayjs = proxy.dayjs
 // const showDiv = reactive({ showDiv: false })
 let showDiv: Ref<boolean> = ref(false);
 let mainText: Ref<string> = ref('');
@@ -102,88 +112,10 @@ let columns = reactive([
   },
 ]);
 let holidays: Ref<{ date: string; title: string }[]> = ref([
-  {
-    date: '2023-04-05',
-    title: '清明节(1天)',
-  },
-  {
-    date: '2023-04-29',
-    title: '劳动节(5天)',
-  },
-  {
-    date: '2023-05-12',
-    title: '《王国之泪》发售',
-  },
-  {
-    date: '2023-06-22',
-    title: '端午节(3天)',
-  },
-  {
-    date: '2023-09-29',
-    title: '中秋国庆双节(8天)',
-  },
+
 ]); // 初始化数组
 let workDays: Ref<{ date: string; title: string }[]> = ref([
-  {
-    date: '2023-04-23',
-    title: '劳动节调班',
-  },
-  {
-    date: '2023-05-06',
-    title: '劳动节调班',
-  },
-  {
-    date: '2023-10-07',
-    title: '中秋国庆双节调班',
-  },
-  {
-    date: '2023-10-08',
-    title: '中秋国庆双节调班',
-  },
-  {
-    date: '2023-02-11',
-    title: '2月月初周六加班',
-  },
-  {
-    date: '2023-03-04',
-    title: '3月月初周六加班',
-  },
-  {
-    date: '2023-04-01',
-    title: '4月月初周六加班',
-  },
-  {
-    date: '2023-05-06',
-    title: '5月月初周六加班',
-  },
-  {
-    date: '2023-06-03',
-    title: '6月月初周六加班',
-  },
-  {
-    date: '2023-07-01',
-    title: '7月月初周六加班',
-  },
-  {
-    date: '2023-08-05',
-    title: '8月月初周六加班',
-  },
-  {
-    date: '2023-09-02',
-    title: '9月月初周六加班',
-  },
-  {
-    date: '2023-10-07',
-    title: '10月月初周六加班',
-  },
-  {
-    date: '2023-11-04',
-    title: '11月月初周六加班',
-  },
-  {
-    date: '2023-12-02',
-    title: '12月月初周六加班',
-  },
+
 ]);
 let dataMap: Record<string, any> = reactive({
   1: { list: holidays.value, title: '法定节假日' },
@@ -195,6 +127,10 @@ onMounted(() => {
     let arr = JSON.parse(oldData) || [];
     holidays.value = arr[1]?.list || [];
     workDays.value = arr[2]?.list || [];
+  } else {
+    holidays.value = [
+      { date: dayjs().add(1, 'day').format('YYYY-MM-DD'), title: '请范总恰饭' }
+    ]
   }
   dataMap = {
     1: { list: holidays.value, title: '法定节假日' },
@@ -215,6 +151,10 @@ function deleteRow(list: Array<any>, item: { title: string }) {
   localStorage.setItem('dataMap', JSON.stringify(dataMap));
 }
 function addItem(data: Array<any>) {
+  if (!data.length) {
+    data && data.push({ date: '', title: '', isEdit: true }); // 添加空行;
+    isEdit.value = true; // 开启编辑状态
+  }
   if (!data[data.length - 1]?.title || !data[data.length - 1]?.date) return; // 最后一行为空时不添加新行
   data && data.push({ date: '', title: '', isEdit: true }); // 添加空行;
   isEdit.value = true; // 开启编辑状态
@@ -315,9 +255,39 @@ function getHolidayInfo() {
   content += '\n不算当天, 距离【周末】' + diffSatDay + '天';
   return content;
 }
+function computedOtherWorkDay() {
+  let currentDate = new Date();
+  for (let i = 0; i <= 11; i++) {
+    let date = new Date(currentDate.getFullYear(), i, 1);
+    let weekDay = date.getDay();
+    let days = 6 - weekDay;
+    // 计算下一个周六的日期
+    let nextSaturday = new Date(date);
+    nextSaturday.setDate(date.getDate() + days);
+    let saturday =
+      nextSaturday.getFullYear() +
+      '-' +
+      String(nextSaturday.getMonth() + 1).padStart(2, '0') +
+      '-' +
+      String(nextSaturday.getDate()).padStart(2, '0');
+    workDays.value.push({
+      date: saturday,
+      title: i + 1 + '月额外工作日',
+    });
+    localStorage.setItem('dataMap', JSON.stringify(dataMap));
+    console.log(saturday);
+    if (i === 12) {
+      break;
+    }
+  }
+}
 </script>
 <style>
 .yuki-count-down {
   white-space: pre-wrap;
+}
+
+.ant-btn+.ant-btn {
+  margin-left: 8px;
 }
 </style>
